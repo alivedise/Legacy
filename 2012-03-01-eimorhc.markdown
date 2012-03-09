@@ -1,0 +1,130 @@
+---
+layout: post
+title: "[FF13-2] Eimorhc - Timeline Puzzle Creator 以及一些心得"
+date: 2012-03-01 19:47
+comments: true
+categories: jquery javascriptmvc
+---
+### 簡介 ###
+既然都做解題程式了，乾脆連出題程式也作一下吧
+#### 命名 ####
+Eimorhc是Chromie的倒字。（本人極愛倒字）
+Chromie是解題者，出題者當然是要倒過來囉。
+
+### 實作細節 ###
+#### Canvas圖形變換 ####
+1. 第一個碰到的問題是要旋轉指針...而且要旋轉兩根。網路上有不少使用canvas實現時鐘的作品，不過我大致看了一下決定自己用canvas刻。
+##### 參考網頁 #####
+一樣是MDN的[Canvas教學](https://developer.mozilla.org/zh_tw/Canvas_%E6%95%99%E5%AD%B8)
+##### Canvas的save/restore #####
+在這邊卡了一下，
+以我的理解restore跟save要成對使用，是用來區隔不同座標變換組合的起點跟終點。
+以下用畫這個時鐘的函式當範例：
+```
+	renderClock: function(){
+		var canvas = this.element.find('#canvas canvas')[0], self = this;
+		var ctx = canvas.getContext("2d");
+		var options = self.constructor.defaults.canvas;
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+		ctx.beginPath();
+		ctx.arc(options.x,options.y,options.C,0,Math.PI*2,true); // 外圈
+		ctx.fillStyle = 'black';
+		ctx.font= 'bold 18px sans-serif';
+		ctx.fill();
+		$.each(self.puzzle, function(index, value){
+				var slice = index/self.puzzle.length;
+				if(self.available[index] && !self.steped[index])
+				{
+					ctx.beginPath();
+					ctx.fillStyle = "#0186d1";
+					ctx.strokeStyle = "#0186d1";
+					ctx.arc(options.x+options.r*Math.sin(2*Math.PI*slice), options.y-options.r*Math.cos(2*Math.PI*slice), 10, 0, Math.PI*2, true);   
+					ctx.fill();
+					ctx.closePath();
+				}
+				if(!self.steped[index])
+				{
+					ctx.fillStyle = self.constructor.defaults.color[value];
+					ctx.fillText(value, options.x-6+options.r*Math.sin(2*Math.PI*slice), options.y+6-options.r*Math.cos(2*Math.PI*slice));   
+				}
+			});
+		ctx.save();
+```
+到這裡為止是畫時鐘大圓跟刻度，不需要用到座標變換。
+這裡將畫布作第一次乾淨的存檔。
+也就是說，平移跟旋轉量都是0。
+
+``` js
+
+		ctx.translate(options.x,options.y);
+		ctx.rotate(2*Math.PI*((this.vars.plus+this.vars.angle)/this.puzzle.length));
+		ctx.drawImage(this.constructor.img,-4,-options.y/2+5,7,37);  
+		ctx.restore();
+```
+開始畫第一根指針，需要旋轉<code>angle+plus</code>角度。
+畫完之後就呼叫<code>restore()</code>回到旋轉量是0的時候。
+``` js
+		ctx.save();
+```
+這裡還要再存一次乾淨的狀態給後面的畫布用。
+因為剛剛save過得狀態已經被restore用掉了！
+``` js
+		ctx.translate(options.x,options.y);
+		ctx.rotate(2*Math.PI*((this.vars.angle+this.vars.minus)/this.puzzle.length));
+		ctx.drawImage(this.constructor.img,-4,-options.y/2+5,7,37);  
+		ctx.restore();
+		ctx.save();
+	}
+```
+全部做完。
+
+##### 利用$.animate的動畫來控制Canvas #####
+這邊參考了[http://acko.net/blog/abusing-jquery-animate-for-fun-and-profit-and-bacon/](http://acko.net/blog/abusing-jquery-animate-for-fun-and-profit-and-bacon/), 主要的技巧是
+###### 1. 對$.fx進行改寫，讓$.animate可以接受自訂的屬性 ######
+``` js
+		var $_fx_step_default = $.fx.step._default;
+		$.fx.step._default = function (fx) {
+			if (!fx.elem.customAnimate) return $_fx_step_default(fx);
+			fx.elem[fx.prop] = fx.now;
+			fx.elem.updated = true;
+		};
+```
+###### 2. 利用一個中介div DOM，讓$.animate去動態改變自訂屬性。######
+``` js
+		this.vars = $.extend($('<div>')[0], {
+			angle: 0,
+			plus: 0,
+			minus: 0,
+			end: false,
+			customAnimate: true,
+			updated: true
+		});
+
+```
+###### 3. Canvas的繪圖函式中，直接拿中介DOM的屬性來繪圖。######
+``` js
+	ctx.rotate(2*Math.PI*((this.vars.plus+this.vars.angle)/this.puzzle.length));
+```
+###### 4. 任何時候想要讓Canvas有動畫只要直接對中介DIV作animate ######
+``` js
+		$(self.vars).animate({ angle: index, plus: 0, minus: 0 }, { duration: 2000}).queue(function(){	
+			$(this).dequeue();
+		}).animate({ angle: index, plus: value, minus: -value }, { duration: 2000}).queue(function(){
+			$(this).dequeue();
+		});
+```
+###### 5.建立一個定時函數檢查update的值 ######
+``` js
+		setInterval(function(){
+			if (!self.vars.updated) return;
+			self.vars.updated = false;					
+			self.renderClock();
+		}, 30);
+```
+
+### Screenshot & Github demo pages ###
+{% img http://i.imgur.com/29wCE.jpg %}
+[http://alivedise.github.com/Eimorhc/](http://alivedise.github.com/Eimorhc/)
+
+
