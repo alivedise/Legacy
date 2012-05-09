@@ -1,0 +1,35 @@
+---
+layout: post
+title: "Setup Gaia on Mac with Firefox Nightly build"
+date: 2012-05-05 10:40
+comments: true
+categories: gaia 
+---
+* 本文來自[https://github.com/jrburke/gaia-devserver](https://github.com/jrburke/gaia-devserver)
+
+1. 安裝Node 
+	PKG: [https://sites.google.com/site/nodejsmacosx/](https://sites.google.com/site/nodejsmacosx/)
+2. 安裝[Firefox Nightly Build](http://nightly.mozilla.org/)
+3. 修改<code>/etc/hosts</code>加入
+
+    127.0.0.1     gaiamobile.org
+
+4. 安裝gaia
+
+    mkdir b2g
+	cd b2g
+	git clone git://github.com/andreasgal/gaia.git
+	git clone git://github.com/jrburke/gaia-devserver.git
+	cd gaia
+	GAIA_DOMAIN=gaiamobile.org:8424 make
+	cd ..
+	node gaia-devserver/devserver.js docRoot=gaia/apps
+
+5. 啟動Firefox Nightly
+
+    /Applications/FirefoxNightly.app/Contents/MacOS/firefox -profile /Users/alive/b2g/gaia/profile --no-remote http://homescreen.gaiamobile.org:8424
+
+6. 開新分頁<code>about:config</code>，把<code>browser.offline-apps.notify</code>設成false
+7. 加入一個新的Boolean設定值名為<code>dom.w3c_touch_events.enabled</code>設成true
+8. 完成了！
+{% img https://lh6.googleusercontent.com/-an0dqr9lhAM/T6Qjwhk5emI/AAAAAAAAC5k/6-4SRu5Wv7Q/s1162/%E8%9E%A2%E5%B9%95%E5%BF%AB%E7%85%A7+2012-05-05+%E4%B8%8A%E5%8D%882.44.59.png %}

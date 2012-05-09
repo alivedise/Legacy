@@ -1,0 +1,30 @@
+---
+layout: post
+title: "讓Excel與網頁互相溝通"
+date: 2012-05-05 11:10
+comments: true
+categories: Web 
+---
+# 前言 #
+同事在做一個Excel的應用，主要使用VBA，
+這語言真是一個十年沒長進的東西，
+不過我嘗試做了一個網頁，讓VBA可以透過Office內建的WebBrowser元件跟網頁之間互相溝通，
+以達到利用Excel表格內容控制網頁行為的效果。
+
+# 網頁 -> Excel #
+其實能用的方法很少，我想到的是利用TitleChange，
+把網頁要告訴Excel的訊息寫進document.title，這樣Excel內的WebBrowser會觸發TitleChange
+
+    Private Sub WebBrowser1_TitleChange(ByVal Text As String)
+	    If Text <> "loading" Then
+			...
+		End If
+	End Sub
+
+# Excel -> 網頁 #
+Excel可以去寫某個DOM的內容，寫完之後可以去操作某個按鈕讓網頁知道訊息寫完了
+
+	ActiveSheet.WebBrowser1.Document.getElementById("excel").innerHtml = "test"
+	ActiveSheet.WebBrowser1.Document.getElementById("import").Click
+
+
